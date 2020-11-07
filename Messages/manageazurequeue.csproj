@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>netcoreapp3.1</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Azure.Storage.Common" Version="12.5.2" />
+    <PackageReference Include="Microsoft.Azure.Storage.Queue" Version="11.2.2" />
+  </ItemGroup>
+
+</Project>

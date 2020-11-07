@@ -1,0 +1,75 @@
+data:
+  AzureWebJobsStorage: <CONNECTION STRING IN BASE64>
+  STORAGE_CONNECTIONSTRING_ENV_NAME: <CONNECTION STRING IN BASE64>
+  FUNCTIONS_WORKER_RUNTIME: ZG90bmV0
+apiVersion: v1
+kind: Secret
+metadata:
+  name: function-queue-processing
+  namespace: default
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: function-queue-processing
+  namespace: default
+  labels:
+    app: function-queue-processing
+spec:
+  selector:
+    matchLabels:
+      app: function-queue-processing
+  template:
+    metadata:
+      labels:
+        app: function-queue-processing
+    spec:
+      containers:
+      - name: function-queue-processing
+        image: <REGISTRY/queueprocessor:v1> # Address of your registry + image
+        env:
+        - name: AzureFunctionsJobHost__functions__0
+          value: QueueProcessor
+        - name: storageAccountConnectionString
+          valueFrom: 
+           secretKeyRef:
+            name: storageconnectionstring
+            key: storageAccountConnectionString
+        - name: storageContainerName
+          value: "messagesfromjjbinks"
+        envFrom:
+        - secretRef:
+            name: function-queue-processing
+      imagePullSecrets: 
+       - name: containerregistrysecret
+---
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: queue-processor-scaledobject
+  namespace: default
+spec:
+  scaleTargetRef:
+    name: function-queue-processing # Corresponds with Deployment Name
+  triggers:
+  - type: azure-queue
+    metadata:
+      queueName: <QUEUE NAME> # Name of the queue 
+      connectionFromEnv: STORAGE_CONNECTIONSTRING_ENV_NAME # Coressponds with Connection String at start of yaml
+      # Optional
+      queueLength: "5" # default 5
+  minReplicaCount: 0   # Optional. Default: 0
+  maxReplicaCount: 250 # Optional. Default: 100
+  pollingInterval: 1  # Optional. Default: 30 seconds
+  cooldownPeriod:  10 # Optional. Default: 300 second
+  advanced:                                          # Optional. Section to specify advanced options
+      restoreToOriginalReplicaCount: true            # Optional. Default: false
+      horizontalPodAutoscalerConfig:                   # Optional. Section to specify HPA related options
+        behavior:                                      # Optional. Use to modify HPA's scaling behavior
+          scaleDown:
+            stabilizationWindowSeconds: 300
+            policies:
+            - type: Percent
+              value: 100
+              periodSeconds: 15
+
